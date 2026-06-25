@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#16a34a" />
+  <title>Gestión de Alquileres</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: sans-serif; background: #f9fafb; }
+    .wsp { background: #25D366; }
+    .wsp:hover { background: #1ebe5d; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState } = React;
+
+const inquilinosIniciales = [
+  { id: 4,  nombre: "ALTURRIA WALTER",    telefono: "5493585432862", propiedad: "SAN LORENZO 596 D",        formaPago: "Otro" },
+  { id: 15, nombre: "BISOTTO JOHANA",     telefono: "5493585415744", propiedad: "PUERREYDON 262 LOCAL",     formaPago: "Otro" },
+  { id: 16, nombre: "CERVELLA MARIELA",   telefono: "5493585408466", propiedad: "DR EUGENIO FODOR 296",     formaPago: "Otro" },
+  { id: 17, nombre: "CERVELLA SILVINA",   telefono: "5493585408466", propiedad: "DR EUGENIO FODOR 296",     formaPago: "Otro" },
+  { id: 6,  nombre: "CORIA MIGUEL",       telefono: "5493584244153", propiedad: "SAN LORENZO 596 F",        formaPago: "Otro" },
+  { id: 12, nombre: "DIAZ ELIZABETH",     telefono: "5493585590194", propiedad: "PUERREYDON 262 A",         formaPago: "Otro" },
+  { id: 2,  nombre: "GABELLE MARTIN",     telefono: "5493585433415", propiedad: "GOB SABATTINI B",          formaPago: "Otro" },
+  { id: 9,  nombre: "GONZALES ALEXANDRA", telefono: "5493585413107", propiedad: "PUERREYDON 262 D",         formaPago: "Otro" },
+  { id: 7,  nombre: "IMENZON M.EUGENIA",  telefono: "5493585431197", propiedad: "SAN LORENZO 596 G",        formaPago: "Otro" },
+  { id: 8,  nombre: "MAGALLANES HECTOR",  telefono: "5493584238399", propiedad: "SAN LORENZO 596 H",        formaPago: "Otro" },
+  { id: 1,  nombre: "OVIEDO LUCIA",       telefono: "5493585646588", propiedad: "GOB SABATTINI A",          formaPago: "Transferencia" },
+  { id: 14, nombre: "RIVAS CLAUDIA",      telefono: "5493585404455", propiedad: "SAN JUAN BOSCO 356",       formaPago: "Otro" },
+  { id: 5,  nombre: "SANNI HUGO",         telefono: "5493585646244", propiedad: "SAN LORENZO 596 E",        formaPago: "Otro" },
+  { id: 3,  nombre: "TONELLO DANIEL",     telefono: "5493585412406", propiedad: "SAN LORENZO 596 C",        formaPago: "Otro" },
+  { id: 10, nombre: "TOULET CAMILA",      telefono: "5493585409125", propiedad: "PUERREYDON 262 C",         formaPago: "Otro" },
+  { id: 11, nombre: "TULIAN SOLEDAD",     telefono: "5493585408727", propiedad: "PUERREYDON 262 B",         formaPago: "Otro" },
+  { id: 13, nombre: "WAYMAN AGUSTINA",    telefono: "5493585434385", propiedad: "CURA BROCHERO Y BELGRANO", formaPago: "Otro" },
+];
+
+const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const mesActual = () => meses[new Date().getMonth()];
+const anio = new Date().getFullYear();
+const fechaHoy = () => { const d = new Date(); return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; };
+const formatPesos = (v) => { const n = parseFloat(v?.toString().replace(/\./g,"").replace(",",".")); return isNaN(n) ? "0" : n.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2}); };
+const parsePesos = (v) => parseFloat(v?.toString().replace(/\./g,"").replace(",",".")) || 0;
+const emptyExp = () => ({ alquiler:"", agua:"", gas:"", cloaca:"", luz:"" });
+
+const LISTA="lista", FORM="formulario", MSG="mensaje", NUEVO="nuevo", EDITAR="editar";
+
+function App() {
+  const [inquilinos, setInquilinos] = useState(inquilinosIniciales);
+  const [sel, setSel] = useState(null);
+  const [vista, setVista] = useState(LISTA);
+  const [exp, setExp] = useState(emptyExp());
+  const [pago, setPago] = useState("Otro");
+  const [venc, setVenc] = useState("10");
+  const [nuevo, setNuevo] = useState({nombre:"",propiedad:"",telefono:"",formaPago:"Otro"});
+  const [edit, setEdit] = useState(null);
+  const [copiado, setCopiado] = useState(false);
+  const [busq, setBusq] = useState("");
+  const [nroRec, setNroRec] = useState(1);
+
+  const total = Object.values(exp).reduce((a,v) => a + parsePesos(v), 0);
+
+  const msgLiq = () => {
+    const fmt = v => { const n = parsePesos(v); return n ? `$${formatPesos(n)}` : null; };
+    const l = [`*Liquidación ${mesActual()} ${anio}*`, `Hola ${sel.nombre}!`, `Propiedad: ${sel.propiedad}`];
+    if (fmt(exp.alquiler)) l.push(`• Alquiler: ${fmt(exp.alquiler)}`);
+    if (fmt(exp.agua))     l.push(`• Agua: ${fmt(exp.agua)}`);
+    if (fmt(exp.gas))      l.push(`• Gas: ${fmt(exp.gas)}`);
+    if (fmt(exp.cloaca))   l.push(`• Cloaca: ${fmt(exp.cloaca)}`);
+    if (fmt(exp.luz))      l.push(`• Luz: ${fmt(exp.luz)}`);
+    l.push(`*TOTAL: $${formatPesos(total)}*`, `Forma de pago: ${pago}`, `Vencimiento: día ${venc}`);
+    return l.join("\n");
+  };
+
+  const msgRec = () => {
+    const nro = String(nroRec).padStart(4,"0");
+    return [`🧾 *RECIBO DE PAGO N° ${nro}*`, `*${mesActual()} ${anio}*`, ``,
+      `Inquilino: ${sel.nombre}`, `Propiedad: ${sel.propiedad}`,
+      `Fecha de pago: ${fechaHoy()}`, `Forma de pago: ${pago}`, ``,
+      `*TOTAL RECIBIDO: $${formatPesos(total)}*`, ``, `✅ Pago registrado. ¡Gracias!`].join("\n");
+  };
+
+  const abrirWsp = txt => {
+    const tel = sel.telefono.replace(/\D/g,"");
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(txt)}`, "_blank");
+  };
+
+  const generarPDF = () => {
+    const nro = String(nroRec).padStart(4,"0");
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+      body{font-family:Arial,sans-serif;margin:0;padding:40px;color:#222}
+      .box{max-width:600px;margin:auto;border:2px solid #16a34a;border-radius:12px;overflow:hidden}
+      .hdr{background:#16a34a;color:#fff;padding:24px 32px}
+      .hdr h1{margin:0;font-size:22px}.hdr p{margin:4px 0 0;font-size:13px;opacity:.85}
+      .nro{float:right;font-size:13px;opacity:.9;margin-top:4px}
+      .body{padding:28px 32px}
+      .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:15px}
+      .lbl{color:#555}.val{font-weight:600}
+      .tot{display:flex;justify-content:space-between;padding:14px 20px;background:#f0fdf4;border-radius:8px;margin-top:16px}
+      .tot span{font-size:17px;font-weight:700;color:#15803d}
+      .firma{margin-top:40px;display:flex;justify-content:space-between;font-size:13px;color:#555}
+      .fl{border-top:1px solid #999;padding-top:6px;width:180px;text-align:center}
+      .ftr{text-align:center;padding:16px;font-size:12px;color:#aaa;border-top:1px solid #e5e7eb}
+    </style></head><body><div class="box">
+      <div class="hdr"><span class="nro">Recibo N° ${nro}</span><h1>🏠 RECIBO DE ALQUILER</h1><p>${mesActual()} ${anio}</p></div>
+      <div class="body">
+        <div class="row"><span class="lbl">Inquilino</span><span class="val">${sel.nombre}</span></div>
+        <div class="row"><span class="lbl">Propiedad</span><span class="val">${sel.propiedad}</span></div>
+        <div class="row"><span class="lbl">Fecha de pago</span><span class="val">${fechaHoy()}</span></div>
+        <div class="row"><span class="lbl">Forma de pago</span><span class="val">${pago}</span></div>
+        <div class="tot"><span>TOTAL RECIBIDO</span><span>$${formatPesos(total)}</span></div>
+        <div class="firma"><div class="fl">Firma del locador</div><div class="fl">Firma del inquilino</div></div>
+      </div>
+      <div class="ftr">Recibo generado el ${fechaHoy()} · ${mesActual()} ${anio}</div>
+    </div></body></html>`;
+    const win = window.open("","_blank");
+    win.document.write(html); win.document.close();
+    setTimeout(() => win.print(), 500);
+    setNroRec(n => n+1);
+  };
+
+  const seleccionar = inq => { setSel(inq); setExp(emptyExp()); setPago(inq.formaPago||"Otro"); setVenc("10"); setVista(FORM); };
+  const filtrados = inquilinos.filter(i => i.nombre.includes(busq.toUpperCase()) || i.propiedad.includes(busq.toUpperCase()));
+
+  const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400";
+  const btnG = "bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition cursor-pointer";
+  const btnS = "bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg text-sm transition cursor-pointer";
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-green-600 text-white px-4 py-4 flex items-center gap-3">
+        {vista !== LISTA && <button onClick={() => setVista(LISTA)} className="text-white text-xl mr-1 cursor-pointer">←</button>}
+        <div>
+          <div className="font-bold text-lg">🏠 Gestión de Alquileres</div>
+          <div className="text-green-100 text-xs">{mesActual()} {anio} · {inquilinos.length} inquilinos</div>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-4">
+
+        {vista === LISTA && (
+          <div>
+            <div className="flex gap-2 mb-3">
+              <input className={inp+" flex-1"} placeholder="🔍 Buscar..." value={busq} onChange={e => setBusq(e.target.value)} />
+              <button onClick={() => setVista(NUEVO)} className={btnG}>+ Nuevo</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              {filtrados.map(inq => (
+                <div key={inq.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold text-gray-800">{inq.nombre}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">📍 {inq.propiedad}</div>
+                      <div className="text-xs text-green-600 mt-0.5">📱 {inq.telefono}</div>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                      <button onClick={() => { setEdit({...inq}); setVista(EDITAR); }} className="text-xs text-blue-500 hover:underline cursor-pointer">Editar</button>
+                      <button onClick={() => setInquilinos(inquilinos.filter(i => i.id !== inq.id))} className="text-xs text-red-400 hover:underline cursor-pointer">Borrar</button>
+                    </div>
+                  </div>
+                  <button onClick={() => seleccionar(inq)} className="mt-3 w-full bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2 rounded-lg text-sm transition cursor-pointer">
+                    📋 Generar liquidación
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {vista === NUEVO && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <h2 className="font-bold text-gray-700 mb-4">Nuevo Inquilino</h2>
+            <div className="flex flex-col gap-3">
+              {[["nombre","Nombre y apellido *","Ej: GARCIA JUAN"],["propiedad","Propiedad *","Ej: SAN LORENZO 596 A"],["telefono","Teléfono","Ej: 5493585123456"]].map(([k,l,p]) => (
+                <div key={k}>
+                  <label className="text-xs text-gray-500 mb-1 block">{l}</label>
+                  <input className={inp} placeholder={p} value={nuevo[k]}
+                    onChange={e => setNuevo({...nuevo,[k]: k==="telefono" ? e.target.value : e.target.value.toUpperCase()})} />
+                </div>
+              ))}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Forma de pago</label>
+                <select className={inp} value={nuevo.formaPago} onChange={e => setNuevo({...nuevo,formaPago:e.target.value})}>
+                  <option>Transferencia</option><option>Efectivo</option><option>Otro</option>
+                </select>
+              </div>
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => { if(!nuevo.nombre||!nuevo.propiedad) return; setInquilinos([...inquilinos,{id:Date.now(),...nuevo}]); setNuevo({nombre:"",propiedad:"",telefono:"",formaPago:"Otro"}); setVista(LISTA); }} className={btnG}>Guardar</button>
+                <button onClick={() => setVista(LISTA)} className={btnS}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {vista === EDITAR && edit && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <h2 className="font-bold text-gray-700 mb-4">Editar Inquilino</h2>
+            <div className="flex flex-col gap-3">
+              {[["nombre","Nombre y apellido"],["propiedad","Propiedad"],["telefono","Teléfono"]].map(([k,l]) => (
+                <div key={k}>
+                  <label className="text-xs text-gray-500 mb-1 block">{l}</label>
+                  <input className={inp} value={edit[k]} onChange={e => setEdit({...edit,[k]: k==="telefono" ? e.target.value : e.target.value.toUpperCase()})} />
+                </div>
+              ))}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Forma de pago</label>
+                <select className={inp} value={edit.formaPago} onChange={e => setEdit({...edit,formaPago:e.target.value})}>
+                  <option>Transferencia</option><option>Efectivo</option><option>Otro</option>
+                </select>
+              </div>
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => { setInquilinos(inquilinos.map(i => i.id===edit.id?edit:i)); setEdit(null); setVista(LISTA); }} className={btnG}>Guardar</button>
+                <button onClick={() => setVista(LISTA)} className={btnS}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {vista === FORM && sel && (
+          <div>
+            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4">
+              <div className="font-bold text-green-800">{sel.nombre}</div>
+              <div className="text-xs text-green-600">📍 {sel.propiedad}</div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <h3 className="font-bold text-gray-700 mb-3">Liquidación {mesActual()} {anio}</h3>
+              <div className="flex flex-col gap-3">
+                {[{k:"alquiler",l:"🏠 Alquiler",r:true},{k:"agua",l:"💧 Agua"},{k:"gas",l:"🔥 Gas"},{k:"cloaca",l:"🚿 Cloaca"},{k:"luz",l:"💡 Luz"}].map(({k,l,r}) => (
+                  <div key={k}>
+                    <label className="text-xs text-gray-500 mb-1 block">{l}{r?" *":""}</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-400 text-sm">$</span>
+                      <input className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                        placeholder="0" value={exp[k]} onChange={e => setExp({...exp,[k]:e.target.value})} />
+                    </div>
+                  </div>
+                ))}
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500 mb-1 block">Forma de pago</label>
+                    <select className={inp} value={pago} onChange={e => setPago(e.target.value)}>
+                      <option>Transferencia</option><option>Efectivo</option><option>Otro</option>
+                    </select>
+                  </div>
+                  <div className="w-28">
+                    <label className="text-xs text-gray-500 mb-1 block">Vencimiento día</label>
+                    <input className={inp} value={venc} onChange={e => setVenc(e.target.value)} />
+                  </div>
+                </div>
+                <div className="bg-green-50 rounded-lg px-4 py-3 flex justify-between items-center">
+                  <span className="font-bold text-gray-700">TOTAL</span>
+                  <span className="font-bold text-green-700 text-lg">${formatPesos(total)}</span>
+                </div>
+                <button onClick={() => setVista(MSG)} disabled={!exp.alquiler}
+                  className={`${btnG} w-full ${!exp.alquiler?"opacity-50 cursor-not-allowed":""}`}>
+                  Ver mensaje →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {vista === MSG && sel && (
+          <div className="flex flex-col gap-3">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <h3 className="font-bold text-gray-700 mb-3">📋 Liquidación generada</h3>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm whitespace-pre-line text-gray-800 border border-gray-200 leading-relaxed">{msgLiq()}</div>
+            </div>
+            <button onClick={() => abrirWsp(msgLiq())} className="w-full wsp text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition cursor-pointer">
+              💬 Enviar Liquidación por WhatsApp
+            </button>
+            <button onClick={() => { navigator.clipboard.writeText(msgLiq()); setCopiado(true); setTimeout(()=>setCopiado(false),2000); }} className={`${btnS} w-full`}>
+              {copiado ? "✅ ¡Copiado!" : "📋 Copiar mensaje"}
+            </button>
+
+            <div className="flex items-center gap-2 my-1">
+              <div className="flex-1 border-t border-gray-200"/>
+              <span className="text-xs text-gray-400">Una vez que el inquilino pague</span>
+              <div className="flex-1 border-t border-gray-200"/>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🧾</span>
+                <span className="font-bold text-gray-700">Recibo de Pago</span>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm whitespace-pre-line text-gray-800 border border-gray-200 leading-relaxed mb-3">{msgRec()}</div>
+              <div className="flex gap-3 mb-3">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 mb-1 block">N° de recibo</label>
+                  <input className={inp} type="number" value={nroRec} onChange={e => setNroRec(Number(e.target.value))} min="1" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 mb-1 block">Fecha de pago</label>
+                  <input className={inp} value={fechaHoy()} readOnly style={{background:"#f9fafb"}} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => abrirWsp(msgRec())} className="w-full wsp text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition cursor-pointer">
+                  💬 Enviar Recibo por WhatsApp
+                </button>
+                <button onClick={generarPDF} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition cursor-pointer">
+                  📄 Descargar Recibo PDF
+                </button>
+              </div>
+            </div>
+
+            <button onClick={() => setVista(FORM)} className={`${btnS} w-full`}>← Editar montos</button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+</script>
+</body>
+</html>
